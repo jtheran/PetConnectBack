@@ -1,0 +1,36 @@
+{
+  "name": "petconnectback",
+  "version": "1.0.0",
+  "description": "Backend de Red Sical para Mascotas",
+  "keywords": [
+    "PRISMA",
+    "NODEJS",
+    "EXPRESS",
+    "MONGODB"
+  ],
+  "homepage": "https://github.com/jtheran/PetConnectBack#readme",
+  "bugs": {
+    "url": "https://github.com/jtheran/PetConnectBack/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jtheran/PetConnectBack.git"
+  },
+  "license": "MIT",
+  "author": "JMTB",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "colors": "^1.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "nodemailer": "^7.0.10",
+    "prisma": "^6.19.0",
+    "socket.io": "^4.8.1",
+    "winston": "^3.18.3"
+  }
+}
