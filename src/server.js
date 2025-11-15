@@ -2,7 +2,13 @@ import cors from 'cors';
 import express from 'express';
 import http from 'http';
 import config from './config/config.js';
-import { PrismaClient } from '@prisma/client';
+import passport from 'passport';
+import jwtStrategy from './middlewares/passport.js';
+import appleStrategy from './docs/appleStrategy.js';
+import googleStrategy from './docs/googleStrategy.js';
+import microsoftStrategy from './docs/microsoftStrategy.js';
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
 
 // Inicializaciones
 const prisma = new PrismaClient();
@@ -29,6 +35,13 @@ app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(helmet({ contentSecurityPolicy: false }));
+
+//Strategys
+passport.use(jwtStrategy);
+passport.use(appleStrategy);
+passport.use(googleStrategy);
+passport.use(microsoftStrategy);
+app.use(passport.initialize());
 
 // Swagger Docs
 app.use('/api/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

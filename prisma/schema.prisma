@@ -1,14 +1,208 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// =====================================
+//  Datasource + Generator
+// =====================================
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
+}
+
+// =====================================
+//  MODELO USUARIO
+// =====================================
+model User {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String  @unique
+  password  String?
+  avatarUrl String?
+  bio       String?
+
+  pets     Pet[]
+  posts    Post[]
+  comments Comment[]
+  likes    Like[]
+  logs     Log[]
+  providers AuthProvider[]
+  // Chats (M:N a través de tabla pivote)
+  userChats UserChat[]
+  messages  Message[] // mensajes enviados
+  roles     UserRole[]   // <── agregar esto
+}
+
+// =====================================
+//  MODELO AUTHPROVIDER
+// =====================================
+model AuthProvider {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  provider    String   // 'google', 'microsoft', 'apple'
+  providerId  String   // ID que entrega la red social
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+// =====================================
+//  MODELO PET
+// =====================================
+model Pet {
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  species  String
+  breed    String?
+  age      Int?
+  photoUrl String?
+  owner    User    @relation(fields: [ownerId], references: [id])
+  ownerId  String  @db.ObjectId
+}
+
+// =====================================
+//  MODELO POST
+// =====================================
+model Post {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId String @db.ObjectId
+
+  comments Comment[]
+  likes    Like[]
+}
+
+// =====================================
+//  MODELO COMMENT
+// =====================================
+model Comment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt DateTime @default(now())
+
+  post   Post   @relation(fields: [postId], references: [id])
+  postId String @db.ObjectId
+
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId String @db.ObjectId
+}
+
+// =====================================
+//  MODELO LIKE
+// =====================================
+model Like {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  post   Post   @relation(fields: [postId], references: [id])
+  postId String @db.ObjectId
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @db.ObjectId
+}
+
+// =====================================
+//  CHAT (M:N implícito → resuelto con UserChat)
+// =====================================
+model Chat {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+
+  messages Message[]
+  users    UserChat[] // usuarios en este chat
+}
+
+// =====================================
+//  TABLA PIVOTE: UserChat (many-to-many)
+// =====================================
+model UserChat {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @db.ObjectId
+
+  chat   Chat   @relation(fields: [chatId], references: [id])
+  chatId String @db.ObjectId
+}
+
+// =====================================
+//  MENSAJES
+// =====================================
+model Message {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt DateTime @default(now())
+
+  chat   Chat   @relation(fields: [chatId], references: [id])
+  chatId String @db.ObjectId
+
+  sender   User   @relation(fields: [senderId], references: [id])
+  senderId String @db.ObjectId
+}
+
+// =====================================
+//  LOGS
+// =====================================
+model Log {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  action    String
+  module    String
+  createdAt DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String? @db.ObjectId
+}
+
+// =====================================
+// PERMISSION
+// =====================================
+model Permission {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  desc      String?
+
+  roles     RolePermission[]
+  createdAt DateTime @default(now())
+}
+
+// =====================================
+// ROLE
+// =====================================
+model Role {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  desc      String?
+
+  users     UserRole[]
+  permissions RolePermission[]
+  createdAt  DateTime @default(now())
+}
+
+// =====================================
+// PIVOTE: ROLES ↔ PERMISSIONS (M:N)
+// =====================================
+model RolePermission {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+
+  role          Role        @relation(fields: [roleId], references: [id])
+  roleId        String      @db.ObjectId
+
+  permission    Permission  @relation(fields: [permissionId], references: [id])
+  permissionId  String      @db.ObjectId
+}
+
+// =====================================
+// PIVOTE: USERS ↔ ROLES (M:N)
+// =====================================
+model UserRole {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+
+  user      User    @relation(fields: [userId], references: [id])
+  userId    String  @db.ObjectId
+
+  role      Role    @relation(fields: [roleId], references: [id])
+  roleId    String  @db.ObjectId
+
+  createdAt DateTime @default(now())
 }

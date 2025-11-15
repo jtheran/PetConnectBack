@@ -2,48 +2,71 @@ import winston from 'winston';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import 'colors';
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
 
+const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const { combine, timestamp, printf, colorize} = winston.format;
 
+const { combine, timestamp, printf } = winston.format;
 
-// Define el formato de los logs
+// ----------------------------
+// FORMATO CONSOLA + ARCHIVO
+// ----------------------------
 const logFormat = printf(({ level, message, timestamp }) => {
-
-  const safeMessage = String(message); // convierte a string siempre
+  const safeMessage = String(message);
   const safeTimestamp = String(timestamp);
 
-  let formattedMessage = `[${safeTimestamp.toUpperCase()}]:[${level.toUpperCase()}] :: [${safeMessage.toUpperCase()}]`;
-
-
-  // Agregar colores específicos al nivel del log solo en la consola
-  // if (level === 'info') {
-  //   formattedMessage = formattedMessage.green;
-  // } else if (level === 'warn') {
-  //   formattedMessage = formattedMessage.yellow;
-  // } else if (level === 'error') {
-  //   formattedMessage = formattedMessage.red;
-  // }
-
-  return formattedMessage;
+  return `[${safeTimestamp.toUpperCase()}]:[${level.toUpperCase()}] :: [${safeMessage}]`;
 });
 
-// Configura los transportes (en este caso, un archivo)
+// ----------------------------
+// CREACIÓN DEL LOGGER WINSTON
+// ----------------------------
 const logger = winston.createLogger({
   format: combine(
-    timestamp({ format: 'YYYY-MM-DD HH:mm:ss'}),
-    logFormat,
+    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    logFormat
   ),
   transports: [
     new winston.transports.File({
-      filename: `${__dirname}/logger.log`,  // Ruta del archivo de logs
+      filename: `${__dirname}/logger.log`,
     }),
+    new winston.transports.Console(),
   ],
 });
 
+// ---------------------------------------------
+// OVERRIDE PARA GUARDAR LOGS EN MONGODB (PRISMA)
+// ---------------------------------------------
 
+// Guardar en DB según nivel
+const saveLogToDB = async (level, message, meta = {}) => {
+  try {
+    await prisma.log.create({
+      data: {
+        action: message,
+        module: meta.module || "SYSTEM",
+        userId: meta.userId || null,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Error guardando log en DB:", err);
+  }
+};
 
-// También puedes agregar un transporte para la consola si lo deseas
-logger.add(new winston.transports.Console());
+// Override general
+['info', 'warn', 'error'].forEach(level => {
+  const original = logger[level];
+
+  logger[level] = (message, meta = {}) => {
+    // 1️⃣ Registrar en archivo + consola
+    original.call(logger, message);
+
+    // 2️⃣ Registrar en MongoDB
+    saveLogToDB(level, message, meta);
+  };
+});
+
 export default logger;
